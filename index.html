@@ -256,7 +256,7 @@ async function getToken() {
   el.textContent = '토큰 발급 중…'; el.style.color = 'var(--accent)';
 
   try {
-    const r = await fetch('/.netlify/functions/kis-proxy', {
+    const r = await fetch('/api/kis-proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -339,7 +339,7 @@ async function fetchKISCandles(stockCode) {
   try {
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 15000);
-    const r = await fetch('/.netlify/functions/kis-proxy', {
+    const r = await fetch('/api/kis-proxy', {
       method: 'POST',
       signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json' },
