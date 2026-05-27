@@ -1,28 +1,27 @@
-bash
-
-cat /mnt/user-data/outputs/kospi200/netlify/functions/kis-proxy.js
-출력
-
-const https = require('https');
+import https from 'https';
 
 const KIS_BASE = 'openapi.koreainvestment.com';
 
-exports.handler = async (event) => {
-  const headers = {
+export default async (request) => {
+  const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, authorization, appkey, appsecret, tr_id, custtype',
+    'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Content-Type': 'application/json',
   };
 
   // CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (request.method === 'OPTIONS') {
+    return new Response('', { status: 200, headers: corsHeaders });
   }
 
   try {
-    const { path, method, body, reqHeaders } = JSON.parse(event.body || '{}');
-    if (!path) return { statusCode: 400, headers, body: JSON.stringify({ error: 'path required' }) };
+    const { path, method, body, reqHeaders } = await request.json();
+    if (!path) {
+      return new Response(JSON.stringify({ error: 'path required' }), {
+        status: 400, headers: corsHeaders
+      });
+    }
 
     const result = await new Promise((resolve, reject) => {
       const options = {
@@ -50,9 +49,14 @@ exports.handler = async (event) => {
       req.end();
     });
 
-    return { statusCode: 200, headers, body: JSON.stringify(result) };
+    return new Response(JSON.stringify(result), {
+      status: 200, headers: corsHeaders
+    });
   } catch(e) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500, headers: corsHeaders
+    });
   }
 };
-완료
+
+export const config = { path: '/api/kis-proxy' };
