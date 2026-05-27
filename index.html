@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>코스피200 Willy 스캐너</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--panel:#131921;--border:#1e2d3d;--text:#c9d8e8;--muted:#4a6180;--green:#00e676;--red:#ff3d57;--accent:#00bfff;--yellow:#ffc400}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh;padding:14px}
+.wrap{max-width:780px;margin:0 auto}
+.header{text-align:center;padding:16px 0 12px}
+.logo{font-size:20px;font-weight:700;color:#fff}
+.logo span{color:var(--accent)}
+.sub{font-size:10px;color:var(--muted);margin-top:3px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.card-title{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.ctrl-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.btn{padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-start{background:var(--accent);color:#000;flex:1}
+.btn-start:disabled{background:#1a2a3a;color:var(--muted);cursor:not-allowed}
+.btn-stop{background:var(--red);color:#fff;flex:0 0 auto}
+.btn-stop:disabled{background:#1a2332;color:var(--muted);cursor:not-allowed}
+.tf-row{display:flex;gap:6px;margin-bottom:10px}
+.tf-btn{flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0a0f16;color:var(--muted);cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;text-align:center;transition:all .15s}
+.tf-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent)15}
+.prog-wrap{margin-bottom:8px}
+.prog-label{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px}
+progress{width:100%;height:6px;border-radius:3px;-webkit-appearance:none}
+progress::-webkit-progress-bar{background:#1a2332;border-radius:3px}
+progress::-webkit-progress-value{background:var(--accent);border-radius:3px;transition:width .3s}
+.status{font-size:10px;color:var(--muted);margin-top:4px;min-height:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.stat-num{font-size:18px;font-weight:700;margin-bottom:2px}
+.stat-lbl{font-size:8px;color:var(--muted);text-transform:uppercase}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.filter-btn{background:#1a2332;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:10px;font-weight:600;transition:all .15s}
+.filter-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent)15}
+.filter-btn.buy{border-color:var(--green);color:var(--green);background:var(--green)15}
+.filter-btn.sell{border-color:var(--red);color:var(--red);background:var(--red)15}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:10px}
+th{padding:7px 8px;text-align:left;color:var(--muted);font-size:9px;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--border)33;vertical-align:middle}
+tr:hover td{background:#0a0f1655}
+tr:last-child td{border-bottom:none}
+.sym{font-weight:700;color:#fff;font-size:11px}
+.name{color:var(--muted);font-size:9px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.price{font-weight:600}
+.up{color:var(--green)}.dn{color:var(--red)}
+.sig-buy{color:var(--green);background:var(--green)20;border:1px solid var(--green)44;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;display:inline-block}
+.sig-sell{color:var(--red);background:var(--red)20;border:1px solid var(--red)44;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;display:inline-block}
+.sig-none{color:var(--muted);font-size:9px}
+.empty{text-align:center;color:var(--muted);font-size:11px;padding:24px}
+.input-wrap{margin-bottom:10px}
+.input-label{font-size:10px;color:var(--muted);margin-bottom:4px}
+input[type=text],input[type=password]{width:100%;background:#0a0f16;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:inherit;font-size:11px;outline:none}
+input:focus{border-color:var(--accent)}
+.input-hint{font-size:9px;color:var(--muted);margin-top:3px}
+.input-hint a{color:var(--accent);text-decoration:none}
+.input-row{display:flex;gap:6px}
+.btn-sm{background:#1a2332;border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:10px;white-space:nowrap}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.api-status{font-size:10px;margin-top:5px}
+.last-scan{font-size:9px;color:var(--muted);text-align:center;margin-top:6px}
+.token-box{background:#0a0f16;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:10px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="header">
+  <div class="logo">코스피200 <span>Willy 스캐너</span></div>
+  <div class="sub">한국투자증권 오픈API · Will(17) Signal(13) Filter(26) · 일봉/주봉</div>
+</div>
+
+<!-- API 키 설정 -->
+<div class="card">
+  <div class="card-title">🔑 한국투자증권 API 설정</div>
+  <div class="input-wrap">
+    <div class="input-label">App Key</div>
+    <input type="text" id="appKey" placeholder="App Key 입력">
+  </div>
+  <div class="input-wrap">
+    <div class="input-label">App Secret</div>
+    <input type="password" id="appSecret" placeholder="App Secret 입력">
+  </div>
+  <div class="input-row">
+    <button class="btn-sm" onclick="getToken()" style="flex:1">🔐 액세스 토큰 발급</button>
+    <button class="btn-sm" onclick="clearKeys()">초기화</button>
+  </div>
+  <div class="api-status" id="apiStatus" style="color:var(--muted)">API 키를 입력하고 토큰을 발급하세요</div>
+  <div class="token-box" id="tokenBox" style="display:none">
+    <span style="color:var(--muted)">토큰 만료:</span>
+    <span id="tokenExpiry" style="color:var(--accent)">—</span>
+  </div>
+  <div class="input-hint">발급: <a href="https://apiportal.koreainvestment.com" target="_blank">apiportal.koreainvestment.com</a></div>
+</div>
+
+<!-- 종목 직접 조회 -->
+<div class="card">
+  <div class="card-title">🔎 종목 직접 조회</div>
+  <div class="input-row">
+    <input type="text" id="customTicker" placeholder="예: 005930 (삼성전자)" style="flex:1">
+    <button class="btn-sm" onclick="lookupTicker()">조회</button>
+  </div>
+  <div id="lookupResult" style="margin-top:10px"></div>
+</div>
+
+<!-- 스캔 컨트롤 -->
+<div class="card">
+  <div class="card-title">🔍 스캔 설정</div>
+  <div class="tf-row">
+    <div class="tf-btn active" id="tf-D" onclick="setTF('D',this)">일봉 (1D)</div>
+    <div class="tf-btn" id="tf-W" onclick="setTF('W',this)">주봉 (1W)</div>
+  </div>
+  <div class="prog-wrap">
+    <div class="prog-label">
+      <span id="progLabel">대기중</span>
+      <span id="progPct">0%</span>
+    </div>
+    <progress id="progBar" value="0" max="100"></progress>
+    <div class="status" id="status">API 토큰 발급 후 스캔 시작</div>
+  </div>
+  <div class="ctrl-row">
+    <button class="btn btn-start" id="startBtn" onclick="startScan()">🔍 코스피200 스캔 시작</button>
+    <button class="btn btn-stop" id="stopBtn" onclick="stopScan()" disabled>⏹ 중지</button>
+  </div>
+  <div class="last-scan" id="lastScan">마지막 스캔: —</div>
+</div>
+
+<!-- 통계 -->
+<div class="stats">
+  <div class="stat"><div class="stat-num" id="stTotal" style="color:var(--accent)">0</div><div class="stat-lbl">완료</div></div>
+  <div class="stat"><div class="stat-num" id="stBuy" style="color:var(--green)">0</div><div class="stat-lbl">BUY</div></div>
+  <div class="stat"><div class="stat-num" id="stSell" style="color:var(--red)">0</div><div class="stat-lbl">SELL</div></div>
+  <div class="stat"><div class="stat-num" id="stErr" style="color:var(--muted)">0</div><div class="stat-lbl">오류</div></div>
+</div>
+
+<!-- 필터 -->
+<div class="filter-row">
+  <button class="filter-btn active" onclick="setFilter('signal',this)">📊 시그널만</button>
+  <button class="filter-btn" onclick="setFilter('buy',this)">🟢 BUY</button>
+  <button class="filter-btn" onclick="setFilter('sell',this)">🔴 SELL</button>
+  <button class="filter-btn" onclick="setFilter('bullDiv',this)">🟢 Strong Bullish</button>
+  <button class="filter-btn" onclick="setFilter('bearDiv',this)">🔴 Strong Bearish</button>
+  <button class="filter-btn" onclick="setFilter('all',this)">전체</button>
+</div>
+
+<!-- 결과 -->
+<div class="card">
+  <div class="card-title">📋 스캔 결과</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>종목코드</th>
+          <th>종목명</th>
+          <th>현재가</th>
+          <th>등락</th>
+          <th>시그널</th>
+          <th>다이버전스</th>
+          <th>%R</th>
+          <th>Signal</th>
+          <th>Filter</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="9" class="empty">스캔 후 결과가 표시됩니다</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<script>
+// ════════════════════════════════════
+// 코스피200 주요 종목 (종목코드)
+// ════════════════════════════════════
+const KOSPI200 = [
+  ['005930','삼성전자'],['000660','SK하이닉스'],['005380','현대차'],
+  ['000270','기아'],['051910','LG화학'],['035420','NAVER'],
+  ['005490','POSCO홀딩스'],['035720','카카오'],['003550','LG'],
+  ['068270','셀트리온'],['028260','삼성물산'],['012330','현대모비스'],
+  ['066570','LG전자'],['055550','신한지주'],['015760','한국전력'],
+  ['105560','KB금융'],['086790','하나금융지주'],['034730','SK'],
+  ['017670','SK텔레콤'],['030200','KT'],['032830','삼성생명'],
+  ['033780','KT&G'],['096770','SK이노베이션'],['011170','롯데케미칼'],
+  ['011200','HMM'],['000810','삼성화재'],['034020','두산에너빌리티'],
+  ['047050','포스코인터내셔널'],['024110','기업은행'],['018260','삼성에스디에스'],
+  ['010950','S-Oil'],['251270','넷마블'],['078930','GS'],
+  ['009150','삼성전기'],['000100','유한양행'],['036570','엔씨소프트'],
+  ['002790','아모레퍼시픽G'],['011780','금호석유'],['042660','한화오션'],
+  ['009830','한화솔루션'],['316140','우리금융지주'],['039490','키움증권'],
+  ['032640','LG유플러스'],['010130','고려아연'],['029780','삼성카드'],
+  ['000720','현대건설'],['006400','삼성SDI'],['207940','삼성바이오로직스'],
+  ['051900','LG생활건강'],['000080','하이트진로'],['161390','한국타이어앤테크놀로지'],
+  ['267250','현대중공업'],['003490','대한항공'],['138040','메리츠금융지주'],
+  ['011790','SKC'],['097950','CJ제일제당'],['001040','CJ'],
+  ['373220','LG에너지솔루션'],['000120','CJ대한통운'],['271560','오리온'],
+  ['180640','한진칼'],['047810','한국항공우주'],['000150','두산'],
+  ['004020','현대제철'],['005940','NH투자증권'],['019400','현대오일뱅크'],
+  ['028050','삼성중공업'],['001450','현대해상'],['377300','카카오페이'],
+  ['352820','하이브'],['259960','크래프톤'],['293490','카카오게임즈'],
+  ['112610','씨에스윈드'],['011070','LG이노텍'],['000990','DB하이텍'],
+  ['090430','아모레퍼시픽'],['326030','SK바이오팜'],['271940','롯데렌탈'],
+  ['004990','롯데지주'],['003230','삼양식품'],['357780','솔브레인'],
+  ['267260','현대글로비스'],['016360','삼성증권'],['006360','GS건설'],
+  ['010620','현대미포조선'],['014820','동원시스템즈'],['021240','코웨이'],
+  ['000240','한국타이어앤테크놀로지'],['111770','영원무역홀딩스'],['006800','미래에셋증권'],
+  ['036460','한국가스공사'],['139480','이마트'],['282330','BGF리테일'],
+  ['097130','제이씨케미칼'],['000670','영풍'],['005830','DB손해보험'],
+  ['002380','KCC'],['069960','현대백화점'],['001680','대상'],
+  ['004800','효성'],['010140','삼성중공업우'],['003410','쌍용C&E'],
+];
+
+// ════════════════════════════════════
+// 상태
+// ════════════════════════════════════
+let scanning = false, stopFlag = false;
+let results = [], currentFilter = 'signal', currentTF = 'D';
+let buyCount = 0, sellCount = 0, errCount = 0;
+let accessToken = '', tokenExpiry = null;
+
+// 저장값 복원
+document.getElementById('appKey').value    = localStorage.getItem('kis_appkey')    || '';
+document.getElementById('appSecret').value = localStorage.getItem('kis_appsecret') || '';
+accessToken  = localStorage.getItem('kis_token')  || '';
+const expStr = localStorage.getItem('kis_token_exp') || '';
+if (expStr) tokenExpiry = new Date(expStr);
+updateApiStatus();
+
+function setTF(tf, el) {
+  currentTF = tf;
+  document.querySelectorAll('.tf-btn').forEach(b => b.className='tf-btn');
+  el.className = 'tf-btn active';
+}
+
+// ════════════════════════════════════
+// 한국투자증권 API
+// ════════════════════════════════════
+// KIS API → Netlify Function 프록시 통해 호출
+
+// 액세스 토큰 발급
+async function getToken() {
+  const appKey    = document.getElementById('appKey').value.trim();
+  const appSecret = document.getElementById('appSecret').value.trim();
+  if (!appKey || !appSecret) { alert('App Key와 App Secret을 모두 입력하세요!'); return; }
+
+  localStorage.setItem('kis_appkey',    appKey);
+  localStorage.setItem('kis_appsecret', appSecret);
+
+  const el = document.getElementById('apiStatus');
+  el.textContent = '토큰 발급 중…'; el.style.color = 'var(--accent)';
+
+  try {
+    const r = await fetch('/.netlify/functions/kis-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: '/oauth2/tokenP',
+        method: 'POST',
+        body: {
+          grant_type: 'client_credentials',
+          appkey: appKey,
+          appsecret: appSecret,
+        }
+      })
+    });
+    const j = await r.json();
+    if (j.access_token) {
+      accessToken = j.access_token;
+      tokenExpiry = new Date(j.access_token_token_expired);
+      localStorage.setItem('kis_token',     accessToken);
+      localStorage.setItem('kis_token_exp', tokenExpiry.toISOString());
+      updateApiStatus();
+    } else {
+      el.textContent = '❌ 토큰 발급 실패: ' + (j.message || JSON.stringify(j));
+      el.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    el.textContent = '❌ 오류: ' + e.message;
+    el.style.color = 'var(--red)';
+  }
+}
+
+function updateApiStatus() {
+  const el = document.getElementById('apiStatus');
+  const box = document.getElementById('tokenBox');
+  if (accessToken && tokenExpiry && new Date() < tokenExpiry) {
+    el.textContent = '✅ 토큰 유효 · 스캔 가능';
+    el.style.color = 'var(--green)';
+    box.style.display = 'block';
+    document.getElementById('tokenExpiry').textContent =
+      tokenExpiry.toLocaleString('ko-KR');
+  } else if (accessToken) {
+    el.textContent = '⚠️ 토큰 만료 · 재발급 필요';
+    el.style.color = 'var(--yellow)';
+    box.style.display = 'none';
+  } else {
+    el.textContent = 'API 키를 입력하고 토큰을 발급하세요';
+    el.style.color = 'var(--muted)';
+    box.style.display = 'none';
+  }
+}
+
+function clearKeys() {
+  ['kis_appkey','kis_appsecret','kis_token','kis_token_exp'].forEach(k => localStorage.removeItem(k));
+  document.getElementById('appKey').value = '';
+  document.getElementById('appSecret').value = '';
+  accessToken = ''; tokenExpiry = null;
+  updateApiStatus();
+}
+
+// 주가 차트 조회 (일봉/주봉)
+async function fetchKISCandles(stockCode) {
+  if (!accessToken) return null;
+  const appKey    = localStorage.getItem('kis_appkey')    || '';
+  const appSecret = localStorage.getItem('kis_appsecret') || '';
+
+  // 날짜 계산
+  const today = new Date();
+  const toDate = today.toISOString().slice(0,10).replace(/-/g,'');
+
+  // 시작일: 일봉=6개월, 주봉=3년
+  let fromDate;
+  if (currentTF === 'D') {
+    const f = new Date(today); f.setMonth(f.getMonth() - 6);
+    fromDate = f.toISOString().slice(0,10).replace(/-/g,'');
+  } else {
+    const f = new Date(today); f.setFullYear(f.getFullYear() - 3);
+    fromDate = f.toISOString().slice(0,10).replace(/-/g,'');
+  }
+
+  const periodCode = currentTF === 'D' ? 'D' : 'W';
+
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 15000);
+    const r = await fetch('/.netlify/functions/kis-proxy', {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: `/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?fid_cond_mrkt_div_code=J&fid_input_iscd=${stockCode}&fid_input_date_1=${fromDate}&fid_input_date_2=${toDate}&fid_period_div_code=${periodCode}&fid_org_adj_prc=0`,
+        method: 'GET',
+        reqHeaders: {
+          'authorization': `Bearer ${accessToken}`,
+          'appkey': appKey,
+          'appsecret': appSecret,
+          'tr_id': 'FHKST03010100',
+          'custtype': 'P',
+        }
+      })
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j.rt_cd !== '0' || !j.output2 || j.output2.length < 20) return null;
+
+    // output2: 오래된 순으로 정렬 (API는 최신순 반환)
+    const candles = [...j.output2].reverse().map(d => ({
+      t: new Date(d.stck_bsop_date.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).getTime(),
+      o: parseFloat(d.stck_oprc),
+      h: parseFloat(d.stck_hgpr),
+      l: parseFloat(d.stck_lwpr),
+      c: parseFloat(d.stck_clpr),
+      v: parseFloat(d.acml_vol),
+    })).filter(c => c.c > 0);
+
+    if (candles.length < 20) return null;
+
+    // 현재가 & 등락률
+    const cur = j.output1;
+    const price = parseFloat(cur?.stck_prpr || candles[candles.length-1].c);
+    const chg   = parseFloat(cur?.prdy_ctrt || 0);
+
+    return { candles, price, chg };
+  } catch(_) { return null; }
+}
+
+// ════════════════════════════════════
+// Willy Magnus 계산
+// ════════════════════════════════════
+function highest(a, n) {
+  return a.map((_,i) => {
+    if (i < n-1) return null;
+    return Math.max(...a.slice(i-n+1, i+1).filter(v=>v!=null));
+  });
+}
+function lowest(a, n) {
+  return a.map((_,i) => {
+    if (i < n-1) return null;
+    return Math.min(...a.slice(i-n+1, i+1).filter(v=>v!=null));
+  });
+}
+function ema(a, n) {
+  const r = new Array(a.length).fill(null);
+  const k = 2/(n+1); let ok = false;
+  for (let i=0; i<a.length; i++) {
+    if (a[i]==null) continue;
+    if (!ok) { r[i]=a[i]; ok=true; }
+    else r[i] = a[i]*k + r[i-1]*(1-k);
+  }
+  return r;
+}
+function sma(a, n) {
+  return a.map((_,i) => {
+    if (i < n-1) return null;
+    const w = a.slice(i-n+1, i+1);
+    if (w.some(v=>v==null)) return null;
+    return w.reduce((x,y)=>x+y,0)/n;
+  });
+}
+
+function calcWilly(candles) {
+  const hi = candles.map(c=>c.h);
+  const lo = candles.map(c=>c.l);
+  const cl = candles.map(c=>c.c);
+  const n  = candles.length;
+
+  const hN = highest(hi, 17);
+  const lN = lowest(lo, 17);
+  const wR = cl.map((c,i) =>
+    hN[i]==null||lN[i]==null ? null :
+    ((hN[i]-c)/Math.max(hN[i]-lN[i],1e-10))*-100
+  );
+
+  const wR0    = wR.map(v=>v??0);
+  const sigEMA = ema(wR0, 13).map((v,i)=>wR[i]==null?null:v);
+  const filtSMA = sma(wR, 26);
+
+  const i=n-1, wr=wR[i], sig=sigEMA[i], flt=filtSMA[i];
+
+  let buySignal=false, sellSignal=false;
+  for (let x=0; x<3; x++) {
+    const ci=n-1-x, pi=ci-1;
+    if (ci<1) break;
+    const s0=sigEMA[ci],s1=sigEMA[pi],f0=filtSMA[ci],f1=filtSMA[pi];
+    if (s0==null||s1==null||f0==null||f1==null) continue;
+    if (s1<=f1&&s0>f0&&wR[ci]!=null&&wR[ci]<-80) buySignal=true;
+    if (s1>=f1&&s0<f0&&wR[ci]!=null&&wR[ci]>-20) sellSignal=true;
+  }
+
+  const div = detectDivergence(candles, wR);
+
+  return {
+    wr:  wr  !=null ? wr.toFixed(1)  : '—',
+    sig: sig !=null ? sig.toFixed(1) : '—',
+    flt: flt !=null ? flt.toFixed(1) : '—',
+    wrNum: wr, sigNum: sig, fltNum: flt,
+    buy: buySignal, sell: sellSignal,
+    bullDiv: div.bullish, bearDiv: div.bearish,
+  };
+}
+
+function detectDivergence(candles, wrArr) {
+  const n = candles.length;
+  if (n < 40) return { bullish:false, bearish:false };
+  const prices = candles.map(c=>c.c);
+  const wrSafe = wrArr.map(v=>v??0);
+  const mid=n-20, start=n-40;
+
+  function minR(arr,from,to){let v=arr[from];for(let i=from+1;i<=to;i++)if(arr[i]<v)v=arr[i];return v;}
+  function maxR(arr,from,to){let v=arr[from];for(let i=from+1;i<=to;i++)if(arr[i]>v)v=arr[i];return v;}
+
+  const pL1=minR(prices,start,mid-1), pL2=minR(prices,mid,n-1);
+  const wL1=minR(wrSafe,start,mid-1), wL2=minR(wrSafe,mid,n-1);
+  const pH1=maxR(prices,start,mid-1), pH2=maxR(prices,mid,n-1);
+  const wH1=maxR(wrSafe,start,mid-1), wH2=maxR(wrSafe,mid,n-1);
+  const curWR = wrArr[n-1]??0;
+
+  const bullish = curWR<-80 && pL2<pL1 && wL2>wL1;
+  const bearish = curWR>-20 && pH2>pH1 && wH2<wH1;
+
+  if (bullish) return { bullish:true,  bearish:false };
+  if (bearish) return { bullish:false, bearish:true  };
+  return { bullish:false, bearish:false };
+}
+
+// ════════════════════════════════════
+// 스캔
+// ════════════════════════════════════
+async function startScan() {
+  if (!accessToken || (tokenExpiry && new Date() > tokenExpiry)) {
+    alert('액세스 토큰을 먼저 발급하세요!'); return;
+  }
+  if (scanning) return;
+
+  scanning=true; stopFlag=false; results=[];
+  buyCount=0; sellCount=0; errCount=0;
+
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('stopBtn').disabled  = false;
+  document.getElementById('tbody').innerHTML   = '<tr><td colspan="9" class="empty">스캔 중…</td></tr>';
+  ['stTotal','stBuy','stSell','stErr'].forEach(id=>document.getElementById(id).textContent='0');
+
+  const total = KOSPI200.length;
+  let done = 0;
+
+  for (const [code, name] of KOSPI200) {
+    if (stopFlag) break;
+
+    document.getElementById('progLabel').textContent = `${name}(${code}) (${done+1}/${total})`;
+    document.getElementById('status').textContent    = `⏳ ${name} 로딩중…`;
+
+    const data = await fetchKISCandles(code);
+    done++;
+
+    const pct = Math.round(done/total*100);
+    document.getElementById('progBar').value  = pct;
+    document.getElementById('progPct').textContent = pct+'%';
+    document.getElementById('stTotal').textContent = done;
+
+    if (!data) {
+      errCount++;
+      document.getElementById('stErr').textContent = errCount;
+      results.push({ code, name, price:null, chg:null, err:true });
+      await sleep(300);
+      continue;
+    }
+
+    const w = calcWilly(data.candles);
+    if (w.buy)  { buyCount++;  document.getElementById('stBuy').textContent  = buyCount; }
+    if (w.sell) { sellCount++; document.getElementById('stSell').textContent = sellCount; }
+
+    results.push({ code, name, price:data.price, chg:data.chg, ...w });
+    if (w.buy || w.sell || w.bullDiv || w.bearDiv) renderResults();
+
+    document.getElementById('status').textContent =
+      `✅ ${name} · BUY:${buyCount} SELL:${sellCount}`;
+
+    await sleep(300); // KIS API는 초당 20회 허용
+  }
+
+  scanning=false;
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').disabled  = true;
+  document.getElementById('progLabel').textContent = stopFlag ? '중지됨' : '✅ 완료';
+  document.getElementById('status').textContent =
+    `완료: ${done}개 · BUY ${buyCount} · SELL ${sellCount} · 오류 ${errCount}`;
+  document.getElementById('lastScan').textContent =
+    '마지막 스캔: ' + new Date().toLocaleString('ko-KR') + ' (' + (currentTF==='D'?'일봉':'주봉') + ')';
+  renderResults();
+}
+
+function stopScan() { stopFlag=true; document.getElementById('stopBtn').disabled=true; }
+function sleep(ms)  { return new Promise(r=>setTimeout(r,ms)); }
+
+// ════════════════════════════════════
+// 렌더링
+// ════════════════════════════════════
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.className='filter-btn');
+  el.className = 'filter-btn '+(f==='buy'?'buy':f==='sell'?'sell':'active');
+  renderResults();
+}
+
+function renderResults() {
+  let rows = results.filter(r => !r.err);
+  if (currentFilter==='signal')  rows = rows.filter(r=>r.buy||r.sell);
+  else if (currentFilter==='buy')     rows = rows.filter(r=>r.buy);
+  else if (currentFilter==='sell')    rows = rows.filter(r=>r.sell);
+  else if (currentFilter==='bullDiv') rows = rows.filter(r=>r.bullDiv);
+  else if (currentFilter==='bearDiv') rows = rows.filter(r=>r.bearDiv);
+
+  rows.sort((a,b)=>{
+    const av=a.buy?4:a.sell?3:a.bullDiv?2:a.bearDiv?1:0;
+    const bv=b.buy?4:b.sell?3:b.bullDiv?2:b.bearDiv?1:0;
+    return bv-av;
+  });
+
+  if (!rows.length) {
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="9" class="empty">${scanning?'스캔 중…':'결과 없음'}</td></tr>`;
+    return;
+  }
+
+  document.getElementById('tbody').innerHTML = rows.map(r => {
+    const px  = r.price!=null ? r.price.toLocaleString()+'원' : '—';
+    const chg = r.chg!=null ? (r.chg>=0?'+':'')+r.chg.toFixed(2)+'%' : '—';
+    const chgCls = (r.chg||0)>=0?'up':'dn';
+    const wrCls  = r.wrNum!=null?(r.wrNum<-80?'up':r.wrNum>-20?'dn':''):'';
+    const sigBadge = r.buy
+      ? '<span class="sig-buy">▲ BUY</span>'
+      : r.sell
+      ? '<span class="sig-sell">▼ SELL</span>'
+      : '<span class="sig-none">—</span>';
+    const divBadge = r.bullDiv
+      ? '<span style="color:#00e676;background:#00e67620;border:1px solid #00e67644;padding:2px 5px;border-radius:3px;font-size:8px;font-weight:700">🟢 Strong Bullish</span>'
+      : r.bearDiv
+      ? '<span style="color:#ff3d57;background:#ff3d5720;border:1px solid #ff3d5744;padding:2px 5px;border-radius:3px;font-size:8px;font-weight:700">🔴 Strong Bearish</span>'
+      : '<span style="color:var(--muted);font-size:9px">—</span>';
+
+    return `<tr>
+      <td class="sym">${r.code}</td>
+      <td class="name">${r.name}</td>
+      <td class="price">${px}</td>
+      <td class="${chgCls}" style="font-weight:700">${chg}</td>
+      <td>${sigBadge}</td>
+      <td>${divBadge}</td>
+      <td class="wr-val ${wrCls}" style="font-weight:600">${r.wr}</td>
+      <td style="color:${r.sigNum!=null&&r.fltNum!=null&&r.sigNum>r.fltNum?'var(--green)':'var(--red)'};font-size:9px">${r.sig}</td>
+      <td style="color:var(--muted);font-size:9px">${r.flt}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════
+// 직접 조회
+// ════════════════════════════════════
+async function lookupTicker() {
+  if (!accessToken) { alert('액세스 토큰을 먼저 발급하세요!'); return; }
+  const raw = document.getElementById('customTicker').value.trim();
+  if (!raw) { alert('종목코드를 입력하세요! (예: 005930)'); return; }
+
+  const codes = raw.split(/[,\s]+/).filter(Boolean);
+  const el = document.getElementById('lookupResult');
+  el.innerHTML = `<div style="color:var(--muted);font-size:10px">조회 중… (${codes.join(', ')})</div>`;
+
+  let html = '';
+  const savedTF = currentTF;
+
+  for (const code of codes) {
+    currentTF = 'D';
+    const dayData = await fetchKISCandles(code);
+    await sleep(300);
+    currentTF = 'W';
+    const weekData = await fetchKISCandles(code);
+    currentTF = savedTF;
+
+    const dR = dayData  ? calcWilly(dayData.candles)  : null;
+    const wR = weekData ? calcWilly(weekData.candles) : null;
+
+    const name = KOSPI200.find(k=>k[0]===code)?.[1] || code;
+    const price = dayData?.price;
+    const chg   = dayData?.chg;
+
+    const sigBadge = (r) => {
+      if (!r) return '<span style="color:var(--muted);font-size:9px">데이터없음</span>';
+      let s='';
+      if (r.buy)     s+='<span class="sig-buy">▲ BUY</span> ';
+      if (r.sell)    s+='<span class="sig-sell">▼ SELL</span> ';
+      if (r.bullDiv) s+='<div style="color:#00e676;font-size:8px;font-weight:700;margin-top:3px">🟢 Strong Bullish Div</div>';
+      if (r.bearDiv) s+='<div style="color:#ff3d57;font-size:8px;font-weight:700;margin-top:3px">🔴 Strong Bearish Div</div>';
+      return s||'<span class="sig-none">중립</span>';
+    };
+    const wrColor = v => v!=null?(v<-80?'var(--green)':v>-20?'var(--red)':'var(--text)'):'var(--muted)';
+
+    html += `
+    <div style="background:#0a0f16;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <span style="font-size:16px;font-weight:700;color:#fff">${code}</span>
+          <span style="font-size:12px;color:var(--muted);margin-left:6px">${name}</span>
+          ${price?`<span style="font-size:13px;font-weight:600;color:${(chg||0)>=0?'var(--green)':'var(--red)'};margin-left:8px">${price.toLocaleString()}원</span>`:''}
+          ${chg!=null?`<span style="font-size:10px;color:${chg>=0?'var(--green)':'var(--red)'};margin-left:6px">${chg>=0?'+':''}${chg.toFixed(2)}%</span>`:''}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px">
+          <div style="font-size:9px;color:var(--muted);margin-bottom:8px;text-transform:uppercase">📊 일봉 (1D)</div>
+          <div style="margin-bottom:6px">${sigBadge(dR)}</div>
+          ${dR?`<div style="font-size:9px;color:var(--muted);margin-top:6px">
+            <div>%R: <span style="color:${wrColor(dR.wrNum)};font-weight:700">${dR.wr}</span></div>
+            <div>Signal: <span style="color:${dR.sigNum!=null&&dR.sigNum>dR.fltNum?'var(--green)':'var(--red)'};font-weight:600">${dR.sig}</span></div>
+            <div>Filter: <span style="color:var(--text)">${dR.flt}</span></div>
+          </div>`:'<div style="font-size:9px;color:var(--muted)">데이터 없음</div>'}
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px">
+          <div style="font-size:9px;color:var(--muted);margin-bottom:8px;text-transform:uppercase">📊 주봉 (1W)</div>
+          <div style="margin-bottom:6px">${sigBadge(wR)}</div>
+          ${wR?`<div style="font-size:9px;color:var(--muted);margin-top:6px">
+            <div>%R: <span style="color:${wrColor(wR.wrNum)};font-weight:700">${wR.wr}</span></div>
+            <div>Signal: <span style="color:${wR.sigNum!=null&&wR.sigNum>wR.fltNum?'var(--green)':'var(--red)'};font-weight:600">${wR.sig}</span></div>
+            <div>Filter: <span style="color:var(--text)">${wR.flt}</span></div>
+          </div>`:'<div style="font-size:9px;color:var(--muted)">데이터 없음</div>'}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  el.innerHTML = html || '<div style="color:var(--red);font-size:10px">조회 실패</div>';
+}
+
+document.getElementById('customTicker').addEventListener('keydown', e => {
+  if (e.key==='Enter') lookupTicker();
+});
+</script>
+</body>
+</html>
